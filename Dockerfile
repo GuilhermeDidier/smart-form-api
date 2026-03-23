@@ -1,5 +1,5 @@
 # Use official Playwright image — Chromium pre-installed
-FROM mcr.microsoft.com/playwright:v1.50.0-noble
+FROM mcr.microsoft.com/playwright:v1.58.2-noble
 
 WORKDIR /app
 
