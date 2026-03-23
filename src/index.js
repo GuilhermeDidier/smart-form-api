@@ -1,6 +1,7 @@
 require('dotenv').config()
 const express = require('express')
 const path = require('path')
+const fs = require('fs')
 const { getScreenshotsDir } = require('./screenshotter')
 const routes = require('./routes')
 
@@ -11,8 +12,18 @@ const PORT = process.env.PORT || 3000
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 
-// Serve screenshots statically
-app.use('/screenshots', express.static(getScreenshotsDir()))
+// Serve screenshots via explicit route (avoids Railway nginx interception of static files)
+app.get('/screenshots/:filename', (req, res) => {
+  const { filename } = req.params
+  if (!/^[\w-]+\.png$/.test(filename)) {
+    return res.status(400).json({ error: 'invalid filename' })
+  }
+  const filepath = path.join(getScreenshotsDir(), filename)
+  if (!fs.existsSync(filepath)) {
+    return res.status(404).json({ error: 'screenshot not found' })
+  }
+  res.sendFile(filepath)
+})
 
 // Routes
 app.use('/', routes)
