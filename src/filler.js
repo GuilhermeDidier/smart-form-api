@@ -95,10 +95,10 @@ async function fillSelect(page, selector, value) {
     await page.waitForTimeout(500)
 
     const optionSelectors = [
-      `[role="option"]:has-text("${value}")`,
-      `li:has-text("${value}")`,
-      `[class*="option"]:has-text("${value}")`,
-      `[class*="item"]:has-text("${value}")`
+      `[role="option"]:visible:has-text("${value}")`,
+      `li:visible:has-text("${value}")`,
+      `[class*="option"]:visible:has-text("${value}")`,
+      `[class*="item"]:visible:has-text("${value}")`
     ]
 
     for (const optSel of optionSelectors) {

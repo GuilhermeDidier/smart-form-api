@@ -50,6 +50,18 @@ describe('fillForm', () => {
     expect(page.selectOption).toHaveBeenCalledWith('[name="country"]', 'Canada')
   })
 
+  test('falls back to React-Select and only matches visible options', async () => {
+    const mockEl = { click: jest.fn().mockResolvedValue(undefined) }
+    const page = makePage({
+      selectOption: jest.fn().mockRejectedValue(new Error('not a native <select>')),
+      $: jest.fn().mockImplementation((sel) =>
+        sel.includes(':visible') && sel.includes('Canada') ? mockEl : null
+      )
+    })
+    await fillForm(page, [{ id: 'country', value: 'Canada' }], analysis)
+    expect(mockEl.click).toHaveBeenCalled()
+  })
+
   test('checks checkbox when value is true', async () => {
     const page = makePage()
     await fillForm(page, [{ id: 'agree', value: 'true' }], analysis)
