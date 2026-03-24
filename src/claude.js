@@ -55,7 +55,8 @@ Rules:
 - For native <select>, list all <option> texts in "options"
 - For React/custom dropdowns ([role="combobox"]), list all visible option texts in "options"
 - Only include fields that require user input (skip hidden, readonly)
-- submit_selector must target the primary action button (Submit, Apply, Next, Continue)`
+- submit_selector must target the primary action button (Submit, Apply, Next, Continue)
+- If the snapshot includes "emailsOnPage" with email addresses AND the page text or title indicates this is a job posting (no application form present), classify as "email_contact" using the most relevant email address (prefer the one that appears in context of "send CV", "apply", "candidature", etc.)`
 }
 
 function stripFences(text) {
