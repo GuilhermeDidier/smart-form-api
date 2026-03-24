@@ -62,6 +62,14 @@ async function extractPageSnapshot(page, scanCount) {
     const emailMatches = bodyHtml.match(/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/g) || []
     const emailsOnPage = [...new Set(emailMatches)].slice(0, 10)
 
+    // Extract paragraphs/text nodes that contain an email address (provides apply context)
+    const emailRegex = /\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/
+    const emailContexts = Array.from(document.querySelectorAll('p, li, td, div'))
+      .filter(el => !el.querySelector('p, li, td, div') && emailRegex.test(el.textContent))
+      .map(el => el.textContent.trim().substring(0, 300))
+      .filter(Boolean)
+      .slice(0, 5)
+
     return {
       url: window.location.href,
       title: document.title,
@@ -71,6 +79,7 @@ async function extractPageSnapshot(page, scanCount) {
       buttons,
       reactDropdowns,
       emailsOnPage,
+      emailContexts,
       bodyText: (document.body?.innerText || '').substring(0, 3000)
     }
   })

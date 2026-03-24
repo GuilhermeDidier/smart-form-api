@@ -56,7 +56,7 @@ Rules:
 - For React/custom dropdowns ([role="combobox"]), list all visible option texts in "options"
 - Only include fields that require user input (skip hidden, readonly)
 - submit_selector must target the primary action button (Submit, Apply, Next, Continue)
-- If the snapshot includes "emailsOnPage" with email addresses AND the page text or title indicates this is a job posting (no application form present), classify as "email_contact" using the most relevant email address (prefer the one that appears in context of "send CV", "apply", "candidature", etc.)`
+- If the snapshot includes "emailsOnPage" with email addresses AND there is no application form (no inputs/forms), classify as "email_contact". Use "emailContexts" (paragraphs containing email addresses) to find the one that says to send a CV/candidature/apply, and extract its email as "to", infer a subject from the page title, and write a brief cover letter as "body"`
 }
 
 function stripFences(text) {
