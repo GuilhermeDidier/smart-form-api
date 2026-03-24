@@ -24,6 +24,8 @@ const baseSnapshot = {
   labels: [{ htmlFor: 'email', text: 'Email Address' }],
   buttons: [{ text: 'Submit', type: 'submit', className: 'btn-primary' }],
   reactDropdowns: [],
+  emailsOnPage: [],
+  emailContexts: [],
   bodyText: 'Please fill in your email'
 }
 
@@ -80,5 +82,37 @@ describe('scanPage', () => {
     analyzePageWithClaude.mockRejectedValue(err)
 
     await expect(scanPage(mockPage, 0)).rejects.toMatchObject({ code: 'RATE_LIMIT' })
+  })
+
+  test('detects email_contact directly without Claude when no form and apply context found', async () => {
+    const noFormSnapshot = {
+      ...baseSnapshot,
+      inputs: [],
+      forms: null,
+      emailsOnPage: ['jobs@company.com'],
+      emailContexts: ['Please send your CV and candidature to jobs@company.com']
+    }
+    const mockPage = makeMockPage(noFormSnapshot)
+
+    const result = await scanPage(mockPage, 0)
+    expect(result.context).toBe('email_contact')
+    expect(result.details.to).toBe('jobs@company.com')
+    expect(analyzePageWithClaude).not.toHaveBeenCalled()
+  })
+
+  test('falls through to Claude when email context has no apply keywords', async () => {
+    const noFormSnapshot = {
+      ...baseSnapshot,
+      inputs: [],
+      forms: null,
+      emailsOnPage: ['info@company.com'],
+      emailContexts: ['Contact us at info@company.com for general inquiries']
+    }
+    const mockPage = makeMockPage(noFormSnapshot)
+    analyzePageWithClaude.mockResolvedValue({ context: 'unknown' })
+
+    const result = await scanPage(mockPage, 0)
+    expect(result.context).toBe('unknown')
+    expect(analyzePageWithClaude).toHaveBeenCalled()
   })
 })

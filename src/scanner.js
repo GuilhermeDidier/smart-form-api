@@ -88,8 +88,34 @@ async function extractPageSnapshot(page, scanCount) {
   return snapshot
 }
 
+// Keywords indicating "send email to apply" instructions
+const APPLY_EMAIL_KEYWORDS = /send|envo|candidature|apply|cv|résumé|resume|motivation|postuler|candidat/i
+
+// Pre-Claude detection: if the page has no form inputs but has an email address
+// in an "apply" context, classify directly as email_contact without Claude call.
+function detectEmailContactFromSnapshot(snapshot) {
+  if (snapshot.inputs.length > 0 || snapshot.forms) return null
+
+  const applyContext = snapshot.emailContexts.find((ctx) => APPLY_EMAIL_KEYWORDS.test(ctx))
+  if (!applyContext) return null
+
+  const emailMatch = applyContext.match(/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/)
+  if (!emailMatch) return null
+
+  return {
+    context: 'email_contact',
+    details: {
+      to: emailMatch[0],
+      subject: `Application - ${snapshot.title}`,
+      body: 'Please find my CV and cover letter attached as requested.'
+    }
+  }
+}
+
 async function scanPage(page, scanCount = 0) {
   const snapshot = await extractPageSnapshot(page, scanCount)
+  const emailContact = detectEmailContactFromSnapshot(snapshot)
+  if (emailContact) return emailContact
   return analyzePageWithClaude(snapshot)
 }
 
