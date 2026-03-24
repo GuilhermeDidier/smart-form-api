@@ -125,6 +125,8 @@ async function runFillJob(session, session_id, jobId, values) {
       session.consecutiveUnknownCount = 0
     }
 
+    const finalUrl = page.url()
+
     // ── Success ──
     if (analysis.context === 'success') {
       await deleteSession(session_id)
@@ -134,7 +136,8 @@ async function runFillJob(session, session_id, jobId, values) {
         status: 'success',
         fields_filled: filled,
         fields_skipped: skipped,
-        screenshots
+        screenshots,
+        final_url: finalUrl
       })
       return
     }
@@ -147,7 +150,8 @@ async function runFillJob(session, session_id, jobId, values) {
         type: 'action_required',
         action: 'send_email',
         details: analysis.details,
-        screenshots
+        screenshots,
+        final_url: finalUrl
       })
       return
     }
@@ -162,7 +166,8 @@ async function runFillJob(session, session_id, jobId, values) {
         error: 'Page state could not be classified after 3 consecutive attempts',
         fields_filled: filled,
         fields_skipped: skipped,
-        screenshots
+        screenshots,
+        final_url: finalUrl
       })
       return
     }
