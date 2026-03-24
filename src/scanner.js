@@ -57,6 +57,11 @@ async function extractPageSnapshot(page, scanCount) {
       text: cleanText(el)
     }))
 
+    // Extract all email addresses visible on the page (plain text + mailto links)
+    const bodyHtml = document.body?.innerHTML || ''
+    const emailMatches = bodyHtml.match(/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/g) || []
+    const emailsOnPage = [...new Set(emailMatches)].slice(0, 10)
+
     return {
       url: window.location.href,
       title: document.title,
@@ -65,6 +70,7 @@ async function extractPageSnapshot(page, scanCount) {
       labels,
       buttons,
       reactDropdowns,
+      emailsOnPage,
       bodyText: (document.body?.innerText || '').substring(0, 3000)
     }
   })
