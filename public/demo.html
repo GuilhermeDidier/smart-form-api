@@ -426,7 +426,7 @@
   const API = '';
 
   const PRESET_URLS = {
-    email: 'https://www.bspquebec.ca/travailler-au-bsp/postes-disponibles/',
+    email: 'https://emplois.bspquebec.ca/candidats/offres-emploi',
     form:  'https://boards.greenhouse.io/embed/job_app?for=anthropic&token=4025224008'
   };
 
@@ -515,7 +515,13 @@
       }
 
       if (data.type === 'data_request') {
-        setStatus(`Page scanned — ${data.fields.length} fields detected`, 'ok');
+        const fields = data.fields || [];
+        if (fields.length === 0) {
+          setStatus('Page scanned — no form fields detected on this page', 'error');
+          return;
+        }
+        setStatus(`Page scanned — ${fields.length} fields detected`, 'ok');
+        data.fields = fields;
         lastAnalysis = data;
         renderFieldsCard(data);
         return;
