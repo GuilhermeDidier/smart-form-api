@@ -9,6 +9,7 @@ RUN npm ci --omit=dev
 
 # Copy source
 COPY src/ ./src/
+COPY public/ ./public/
 COPY .env.example ./.env.example
 
 # Create screenshots directory
