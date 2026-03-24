@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Form Filling API — Live Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0e1a;
+      color: #c9d1d9;
+      min-height: 100vh;
+      padding: 40px 16px;
+    }
+
+    .container { max-width: 880px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 48px; }
+
+    .badge {
+      display: inline-block;
+      background: #1a2744;
+      color: #58a6ff;
+      border: 1px solid #1f6feb55;
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      font-size: 34px;
+      font-weight: 700;
+      color: #f0f6fc;
+      margin-bottom: 10px;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle { color: #8b949e; font-size: 15px; line-height: 1.5; }
+
+    .card {
+      background: #161b27;
+      border: 1px solid #21262d;
+      border-radius: 14px;
+      padding: 26px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #58a6ff;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #1f6feb;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .url-row { display: flex; gap: 10px; margin-bottom: 14px; }
+
+    input[type="text"] {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      color: #c9d1d9;
+      padding: 11px 14px;
+      font-size: 13px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus { border-color: #58a6ff; }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-primary { background: #1f6feb; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #388bfd; }
+    .btn-primary:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+
+    .btn-success { background: #238636; color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #2ea043; }
+    .btn-success:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: transparent;
+      color: #8b949e;
+      border: 1px solid #30363d;
+      font-size: 12px;
+      padding: 7px 13px;
+    }
+    .btn-ghost:hover { border-color: #8b949e; color: #c9d1d9; }
+    .btn-ghost.active { border-color: #58a6ff; color: #58a6ff; background: #1a274422; }
+
+    .presets { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #8b949e;
+      margin-top: 14px;
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #238636;
+      flex-shrink: 0;
+    }
+    .dot.loading { background: #d29922; animation: pulse 1s ease-in-out infinite; }
+    .dot.error   { background: #da3633; }
+
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+    .fields-meta {
+      font-size: 12px;
+      color: #8b949e;
+      margin-bottom: 14px;
+    }
+
+    .context-badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #1f6feb22;
+      color: #58a6ff;
+      border: 1px solid #1f6feb44;
+      margin-left: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .fields-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) { .fields-grid { grid-template-columns: 1fr; } }
+
+    .field-item {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 11px 13px;
+    }
+
+    .field-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 5px;
+    }
+
+    .field-label-text {
+      font-size: 12px;
+      color: #8b949e;
+      flex: 1;
+    }
+
+    .field-type-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: #1f6feb18;
+      color: #58a6ff;
+      border: 1px solid #1f6feb33;
+      flex-shrink: 0;
+    }
+
+    .field-required { color: #f85149; font-size: 11px; }
+
+    .field-value-text {
+      font-size: 12px;
+      color: #c9d1d9;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      word-break: break-all;
+    }
+
+    .field-options {
+      font-size: 10px;
+      color: #484f58;
+      margin-top: 4px;
+    }
+
+    .submit-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 4px;
+    }
+
+    .submit-status {
+      font-size: 12px;
+      color: #8b949e;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 13px; height: 13px;
+      border: 2px solid #30363d;
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .screenshots-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .screenshot-thumb {
+      border-radius: 8px;
+      border: 1px solid #21262d;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .screenshot-thumb:hover { border-color: #58a6ff; transform: translateY(-2px); }
+
+    .screenshot-thumb img {
+      display: block;
+      height: 130px;
+      width: auto;
+      max-width: 220px;
+      object-fit: cover;
+    }
+
+    .screenshot-label {
+      font-size: 10px;
+      color: #8b949e;
+      padding: 5px 8px;
+      background: #0d1117;
+      text-align: center;
+      letter-spacing: 0.3px;
+    }
+
+    .result-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .result-status.success { background: #1a3a26; color: #3fb950; border: 1px solid #238636; }
+    .result-status.failed  { background: #3d1a1a; color: #f85149; border: 1px solid #da3633; }
+    .result-status.action  { background: #1a2744; color: #58a6ff; border: 1px solid #1f6feb; }
+
+    .error-msg { font-size: 12px; color: #8b949e; margin-top: 6px; margin-bottom: 12px; }
+
+    .filled-list { margin-top: 14px; }
+
+    .filled-row {
+      display: flex;
+      gap: 8px;
+      font-size: 12px;
+      margin-bottom: 5px;
+      align-items: flex-start;
+    }
+
+    .filled-check { color: #3fb950; flex-shrink: 0; }
+    .filled-field { color: #8b949e; min-width: 130px; flex-shrink: 0; }
+    .filled-val   { color: #c9d1d9; font-family: 'SF Mono', 'Fira Code', monospace; word-break: break-all; }
+
+    .email-detail {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .email-row {
+      display: flex;
+      gap: 10px;
+      font-size: 13px;
+      margin-bottom: 10px;
+      align-items: flex-start;
+    }
+    .email-row:last-child { margin-bottom: 0; }
+    .email-key { color: #8b949e; min-width: 64px; flex-shrink: 0; font-size: 12px; padding-top: 1px; }
+    .email-val { color: #c9d1d9; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.5; }
+
+    .hidden { display: none !important; }
+
+    .divider {
+      height: 1px;
+      background: #21262d;
+      margin: 18px 0;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+      color: #8b949e;
+      margin-bottom: 14px;
+    }
+    .stat strong { color: #c9d1d9; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="badge">Live Demo</div>
+    <h1>Smart Form Filling API</h1>
+    <p class="subtitle">Paste any job application URL — the AI scans the page, detects every field,<br>fills the form autonomously, and submits it.</p>
+  </header>
+
+  <!-- Step 1 -->
+  <div class="card">
+    <div class="card-title">
+      <span class="step-num">1</span> Enter a URL
+    </div>
+
+    <div class="url-row">
+      <input type="text" id="urlInput" placeholder="https://example.com/careers/apply" />
+      <button class="btn btn-primary" id="scanBtn" onclick="startScan()">Scan Page</button>
+    </div>
+
+    <div class="presets">
+      <span style="font-size:12px;color:#484f58;margin-right:4px;align-self:center">Presets:</span>
+      <button class="btn btn-ghost" id="presetEmail" onclick="setPreset('email', this)">Email Contact Page</button>
+      <button class="btn btn-ghost" id="presetForm"  onclick="setPreset('form', this)">Full Application Form</button>
+    </div>
+
+    <div class="status-bar">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">Ready — paste a URL or select a preset above</span>
+    </div>
+  </div>
+
+  <!-- Step 2: Fields -->
+  <div class="card hidden" id="fieldsCard">
+    <div class="card-title">
+      <span class="step-num">2</span> Detected Fields
+      <span id="contextBadge" class="context-badge"></span>
+    </div>
+
+    <div class="fields-meta" id="fieldsMeta"></div>
+    <div class="fields-grid" id="fieldsGrid"></div>
+
+    <div id="scanScreenshots"></div>
+
+    <div class="divider"></div>
+
+    <div class="submit-row">
+      <button class="btn btn-success" id="submitBtn" onclick="fillAndSubmit()">Fill &amp; Submit Form</button>
+      <div class="submit-status" id="submitStatus"></div>
+    </div>
+  </div>
+
+  <!-- Email Contact Result -->
+  <div class="card hidden" id="emailCard">
+    <div class="card-title">
+      <span class="step-num">2</span> Result — Email Contact Detected
+    </div>
+    <div class="result-status action">&#9993; Action Required: Send Email to Recruiter</div>
+    <p class="error-msg">This page doesn't have an online form — applications are sent by email.</p>
+    <div class="email-detail" id="emailDetail"></div>
+    <div id="emailScreenshots"></div>
+  </div>
+
+  <!-- Step 3: Result -->
+  <div class="card hidden" id="resultCard">
+    <div class="card-title">
+      <span class="step-num">3</span> Result
+    </div>
+    <div id="resultStatus"></div>
+    <div id="resultError" class="error-msg"></div>
+    <div class="stats-row" id="statsRow"></div>
+    <div class="screenshots-row" id="screenshotsRow"></div>
+    <div class="filled-list" id="filledList"></div>
+  </div>
+
+</div>
+
+<script>
+  const API = '';
+
+  const PRESET_URLS = {
+    email: 'https://www.bspquebec.ca/travailler-au-bsp/postes-disponibles/',
+    form:  'https://boards.greenhouse.io/embed/job_app?for=anthropic&token=4025224008'
+  };
+
+  const DEMO_VALUES = {
+    'first': 'Alex', 'last': 'Johnson', 'name': 'Alex Johnson',
+    'email': 'alex.johnson@demo.com', 'phone': '+1 (514) 555-0192',
+    'linkedin': 'https://linkedin.com/in/alexjohnson',
+    'website': 'https://alexjohnson.dev', 'portfolio': 'https://alexjohnson.dev',
+    'city': 'Montreal', 'country': 'Canada', 'province': 'Quebec',
+    'address': '123 Saint-Catherine St', 'zip': 'H2X 1Y6', 'postal': 'H2X 1Y6',
+    'cover': 'I am excited to apply for this position. With my background in software development and strong communication skills, I am confident I would be a great fit for your team.',
+    'letter': 'I am excited to apply for this position. With my background in software development and strong communication skills, I am confident I would be a great fit for your team.',
+    'summary': 'Experienced software developer with 5+ years building scalable web applications.',
+    'salary': '90000', 'compensation': '90000',
+    'start': 'Immediately', 'available': 'Immediately',
+    'hear': 'LinkedIn', 'source': 'LinkedIn', 'referral': 'LinkedIn',
+    'gender': 'Prefer not to say', 'race': 'Decline to self-identify',
+    'veteran': 'I am not a protected veteran', 'disability': 'No, I don\'t have a disability',
+    'authorize': 'Yes', 'eligible': 'Yes', 'sponsor': 'No',
+    'years': '5', 'experience': '5 years',
+    'degree': 'Bachelor\'s', 'education': 'Bachelor\'s',
+    'university': 'McGill University', 'school': 'McGill University',
+    'major': 'Computer Science', 'field': 'Computer Science',
+  };
+
+  let sessionId = null;
+  let lastAnalysis = null;
+
+  function getDemoValue(field) {
+    const label = (field.label || field.id || '').toLowerCase();
+    for (const [key, val] of Object.entries(DEMO_VALUES)) {
+      if (label.includes(key)) return val;
+    }
+    if (field.type === 'select' && field.options && field.options.length > 0) return field.options[0];
+    if (field.type === 'radio'  && field.options && field.options.length > 0) return field.options[0];
+    if (field.type === 'checkbox') return 'true';
+    if (field.type === 'file') return null;
+    return 'Demo value';
+  }
+
+  function setPreset(type, btn) {
+    document.getElementById('urlInput').value = PRESET_URLS[type];
+    document.querySelectorAll('.btn-ghost').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function setStatus(text, state = 'ok') {
+    document.getElementById('statusText').textContent = text;
+    const dot = document.getElementById('statusDot');
+    dot.className = 'dot' + (state === 'loading' ? ' loading' : state === 'error' ? ' error' : '');
+  }
+
+  const show = id => document.getElementById(id).classList.remove('hidden');
+  const hide = id => document.getElementById(id).classList.add('hidden');
+
+  function reset() {
+    ['fieldsCard','emailCard','resultCard'].forEach(hide);
+    sessionId = null; lastAnalysis = null;
+    document.getElementById('scanScreenshots').innerHTML = '';
+  }
+
+  async function startScan() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { setStatus('Please enter a URL first', 'error'); return; }
+
+    reset();
+    document.getElementById('scanBtn').disabled = true;
+    setStatus('Opening browser and navigating to page…', 'loading');
+
+    try {
+      const res  = await fetch(`${API}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+
+      if (!res.ok) { setStatus(`Error: ${data.error}`, 'error'); return; }
+
+      sessionId = data.session_id;
+
+      if (data.type === 'action_required') {
+        setStatus('Page scanned — email contact detected', 'ok');
+        renderEmailCard(data);
+        return;
+      }
+
+      if (data.type === 'data_request') {
+        setStatus(`Page scanned — ${data.fields.length} fields detected`, 'ok');
+        lastAnalysis = data;
+        renderFieldsCard(data);
+        return;
+      }
+
+      setStatus('Unexpected response from server', 'error');
+    } catch (err) {
+      setStatus(`Network error: ${err.message}`, 'error');
+    } finally {
+      document.getElementById('scanBtn').disabled = false;
+    }
+  }
+
+  function renderFieldsCard(data) {
+    document.getElementById('contextBadge').textContent = data.context;
+    document.getElementById('fieldsMeta').textContent =
+      `${data.fields.length} field${data.fields.length !== 1 ? 's' : ''} detected — pre-filled with demo values below`;
+
+    const grid = document.getElementById('fieldsGrid');
+    grid.innerHTML = '';
+
+    data.fields.forEach(field => {
+      const val = getDemoValue(field);
+      const div = document.createElement('div');
+      div.className = 'field-item';
+
+      const truncVal = val && val.length > 55 ? val.substring(0, 55) + '…' : val;
+      const valueHtml = field.type === 'file'
+        ? '<em style="color:#484f58;font-size:11px">file upload — skipped in demo</em>'
+        : `<span class="field-value-text">${escHtml(truncVal || '—')}</span>`;
+
+      const optionsHtml = field.options && field.options.length > 0
+        ? `<div class="field-options">${field.options.slice(0,3).map(escHtml).join(' · ')}${field.options.length > 3 ? ` +${field.options.length - 3} more` : ''}</div>`
+        : '';
+
+      div.innerHTML = `
+        <div class="field-top">
+          <span class="field-label-text">${escHtml(field.label || field.id)}</span>
+          <span class="field-type-badge">${field.type}</span>
+          ${field.required ? '<span class="field-required">*</span>' : ''}
+        </div>
+        ${valueHtml}
+        ${optionsHtml}
+      `;
+      grid.appendChild(div);
+    });
+
+    if (data.screenshots && data.screenshots.length > 0) {
+      const row = document.getElementById('scanScreenshots');
+      row.innerHTML = '<div class="divider"></div>';
+      const imgs = document.createElement('div');
+      imgs.className = 'screenshots-row';
+      data.screenshots.forEach((url, i) => imgs.appendChild(makeThumb(url, STEP_LABELS.scan[i] || 'screenshot')));
+      row.appendChild(imgs);
+    }
+
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('submitStatus').innerHTML = '';
+    show('fieldsCard');
+  }
+
+  function renderEmailCard(data) {
+    const d = data.details || {};
+    document.getElementById('emailDetail').innerHTML = `
+      <div class="email-row"><span class="email-key">To</span><span class="email-val">${escHtml(d.to || '—')}</span></div>
+      <div class="email-row"><span class="email-key">Subject</span><span class="email-val">${escHtml(d.subject || '—')}</span></div>
+      <div class="email-row"><span class="email-key">Body</span><span class="email-val">${escHtml(d.body || '—')}</span></div>
+    `;
+    if (data.screenshots && data.screenshots.length > 0) {
+      const row = document.getElementById('emailScreenshots');
+      row.innerHTML = '';
+      const div = document.createElement('div');
+      div.className = 'screenshots-row';
+      div.style.marginTop = '16px';
+      data.screenshots.forEach((url, i) => div.appendChild(makeThumb(url, STEP_LABELS.scan[i] || 'screenshot')));
+      row.appendChild(div);
+    }
+    show('emailCard');
+  }
+
+  async function fillAndSubmit() {
+    if (!sessionId || !lastAnalysis) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    setSubmitStatus('<div class="spinner"></div> Filling form fields…');
+
+    const values = lastAnalysis.fields
+      .filter(f => f.type !== 'file')
+      .map(f => ({ id: f.id, value: getDemoValue(f) || '' }));
+
+    try {
+      const res  = await fetch(`${API}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, values })
+      });
+      const init = await res.json();
+
+      if (!res.ok) {
+        setSubmitStatus(`Error: ${init.error}`);
+        btn.disabled = false;
+        return;
+      }
+
+      if (init.job_id) {
+        setSubmitStatus('<div class="spinner"></div> Submitting and waiting for page response…');
+        const result = await pollJob(init.job_id);
+        if (!result) {
+          setSubmitStatus('Job timed out — server may be busy');
+          btn.disabled = false;
+          return;
+        }
+        handleRespond(result);
+      } else {
+        handleRespond(init);
+      }
+    } catch (err) {
+      setSubmitStatus(`Error: ${err.message}`);
+      btn.disabled = false;
+    }
+  }
+
+  function handleRespond(data) {
+    if (data.type === 'action_required') {
+      hide('fieldsCard');
+      renderEmailCard(data);
+      return;
+    }
+    if (data.type === 'result') {
+      hide('fieldsCard');
+      renderResultCard(data);
+      return;
+    }
+    if (data.type === 'data_request') {
+      // Multi-step form — show next page
+      lastAnalysis = data;
+      sessionId = data.session_id || sessionId;
+      renderFieldsCard(data);
+      document.getElementById('submitBtn').disabled = false;
+      setSubmitStatus('');
+      return;
+    }
+  }
+
+  async function pollJob(jobId, max = 40) {
+    for (let i = 0; i < max; i++) {
+      await delay(2000);
+      try {
+        const res = await fetch(`${API}/jobs/${jobId}`);
+        const job = await res.json();
+        if (job.type === 'processing') continue;
+        if (job.type === 'error')      return { type: 'result', status: 'failed', error: job.error, screenshots: [], fields_filled: [], fields_skipped: [] };
+        return job;
+      } catch (_) { continue; }
+    }
+    return null;
+  }
+
+  const STEP_LABELS = {
+    scan:   ['page loaded'],
+    result: ['page loaded', 'form filled', 'after submit', 'final state']
+  };
+
+  function renderResultCard(data) {
+    const ok = data.status === 'success';
+    document.getElementById('resultStatus').innerHTML =
+      `<div class="result-status ${ok ? 'success' : 'failed'}">${ok ? '&#10003; Form submitted successfully' : '&#10007; Submission failed'}</div>`;
+
+    document.getElementById('resultError').textContent = data.error || '';
+
+    const filled  = data.fields_filled  || [];
+    const skipped = data.fields_skipped || [];
+    document.getElementById('statsRow').innerHTML = `
+      <span class="stat"><strong>${filled.length}</strong> fields filled</span>
+      <span class="stat"><strong>${skipped.length}</strong> fields skipped</span>
+    `;
+
+    const sRow = document.getElementById('screenshotsRow');
+    sRow.innerHTML = '';
+    (data.screenshots || []).forEach((url, i) =>
+      sRow.appendChild(makeThumb(url, STEP_LABELS.result[i] || `step ${i + 1}`))
+    );
+
+    const fList = document.getElementById('filledList');
+    fList.innerHTML = filled.slice(0, 10).map(f => `
+      <div class="filled-row">
+        <span class="filled-check">&#10003;</span>
+        <span class="filled-field">${escHtml(f.field)}</span>
+        <span class="filled-val">${escHtml(String(f.value || '').substring(0, 60))}</span>
+      </div>
+    `).join('') + (filled.length > 10
+      ? `<div style="font-size:11px;color:#484f58;margin-top:6px">+ ${filled.length - 10} more fields</div>` : '');
+
+    show('resultCard');
+  }
+
+  function makeThumb(url, label) {
+    const div = document.createElement('div');
+    div.className = 'screenshot-thumb';
+    div.title = 'Click to open full size';
+    div.onclick = () => window.open(url, '_blank');
+    div.innerHTML = `
+      <img src="${url}" alt="${escHtml(label)}" onerror="this.parentElement.style.display='none'">
+      <div class="screenshot-label">${escHtml(label)}</div>
+    `;
+    return div;
+  }
+
+  function setSubmitStatus(html) {
+    document.getElementById('submitStatus').innerHTML = html;
+  }
+
+  function escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  document.getElementById('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') startScan();
+  });
+</script>
+</body>
+</html>

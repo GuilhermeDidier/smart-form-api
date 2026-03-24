@@ -12,6 +12,11 @@ const PORT = process.env.PORT || 3000
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 
+// Serve demo page
+app.get('/demo', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/demo.html'))
+})
+
 // Serve screenshots via explicit route (avoids Railway nginx interception of static files)
 app.get('/screenshots/:filename', (req, res) => {
   const { filename } = req.params
