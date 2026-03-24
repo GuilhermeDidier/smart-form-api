@@ -4,6 +4,7 @@ const { createSession, getSession, touchSession, deleteSession, getActiveSession
 const { scanPage } = require('./scanner')
 const { fillForm } = require('./filler')
 const { takeScreenshot } = require('./screenshotter')
+const { createJob, getJob, resolveJob, failJob } = require('./jobs')
 
 const router = express.Router()
 
@@ -25,7 +26,6 @@ router.post('/start', async (req, res) => {
     const screenshotUrl = await takeScreenshot(page, sessionId, 'page_loaded')
     const analysis = await scanPage(page, 0)
 
-    // Email contact — close session immediately
     if (analysis.context === 'email_contact') {
       await deleteSession(sessionId)
       return res.json({
@@ -61,32 +61,50 @@ router.post('/respond', async (req, res) => {
   if (!session_id) return res.status(400).json({ error: 'session_id is required' })
   if (!values) return res.status(400).json({ error: 'values is required' })
 
-  let session = getSession(session_id)
+  const session = getSession(session_id)
   if (!session) return res.status(404).json({ error: 'session not found or already closed' })
   if (session.crashed) return res.status(500).json({ error: 'browser session crashed' })
+  if (session.activeJobId) return res.status(409).json({ error: 'job already in progress for this session' })
 
   touchSession(session_id)
 
+  const jobId = createJob()
+  session.activeJobId = jobId
+
+  // Call-site .catch is the sole error handler — runFillJob has no inner catch.
+  // The finally block inside runFillJob always clears session.activeJobId.
+  runFillJob(session, session_id, jobId, values).catch((err) => {
+    const msg = err.code === 'RATE_LIMIT' ? 'Claude API rate limit exceeded' : err.message
+    failJob(jobId, msg)
+  })
+
+  return res.status(202).json({ session_id, job_id: jobId, type: 'processing' })
+})
+
+// ─── runFillJob ──────────────────────────────────────────────────────────────
+// No inner catch — errors propagate to the call-site .catch handler.
+// The finally block always clears session.activeJobId regardless of outcome.
+async function runFillJob(session, session_id, jobId, values) {
   try {
     const { page, lastAnalysis } = session
     const screenshots = []
 
-    // Fill and submit
     const { filled, skipped } = await fillForm(page, values, lastAnalysis)
 
-    // Guard 1: session may have expired during fillForm (race condition)
+    // Guard 1: session may have expired during fillForm
     if (!getSession(session_id)) {
-      return res.status(404).json({ error: 'session expired during execution' })
+      failJob(jobId, 'session expired during execution')
+      return
     }
 
     screenshots.push(await takeScreenshot(page, session_id, 'form_filled'))
 
-    // Wait for navigation
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {})
 
     // Guard 2: session may have expired during waitForLoadState
     if (!getSession(session_id)) {
-      return res.status(404).json({ error: 'session expired during execution' })
+      failJob(jobId, 'session expired during execution')
+      return
     }
 
     screenshots.push(await takeScreenshot(page, session_id, `after_submit_${Date.now()}`))
@@ -95,12 +113,12 @@ router.post('/respond', async (req, res) => {
 
     // Guard 3: session may have expired during async Claude call
     if (!getSession(session_id)) {
-      return res.status(404).json({ error: 'session expired during execution' })
+      failJob(jobId, 'session expired during execution')
+      return
     }
 
     session.scanCount += 1
 
-    // Track consecutive unknown scans; reset on any other context
     if (analysis.context === 'unknown') {
       session.consecutiveUnknownCount = (session.consecutiveUnknownCount || 0) + 1
     } else {
@@ -110,7 +128,7 @@ router.post('/respond', async (req, res) => {
     // ── Success ──
     if (analysis.context === 'success') {
       await deleteSession(session_id)
-      return res.json({
+      resolveJob(jobId, {
         session_id,
         type: 'result',
         status: 'success',
@@ -118,24 +136,26 @@ router.post('/respond', async (req, res) => {
         fields_skipped: skipped,
         screenshots
       })
+      return
     }
 
     // ── Email contact mid-flow ──
     if (analysis.context === 'email_contact') {
       await deleteSession(session_id)
-      return res.json({
+      resolveJob(jobId, {
         session_id,
         type: 'action_required',
         action: 'send_email',
         details: analysis.details,
         screenshots
       })
+      return
     }
 
     // ── Failed after 3 consecutive unknown scans ──
     if (session.consecutiveUnknownCount >= 3) {
       await deleteSession(session_id)
-      return res.json({
+      resolveJob(jobId, {
         session_id,
         type: 'result',
         status: 'failed',
@@ -144,21 +164,38 @@ router.post('/respond', async (req, res) => {
         fields_skipped: skipped,
         screenshots
       })
+      return
     }
 
     // ── Next step ──
     session.lastAnalysis = analysis
-    return res.json({
+    resolveJob(jobId, {
       session_id,
       type: 'data_request',
       context: analysis.context,
       fields: analysis.fields,
       screenshots
     })
-  } catch (err) {
-    const status = err.code === 'RATE_LIMIT' ? 503 : 500
-    return res.status(status).json({ error: err.message })
+  } finally {
+    session.activeJobId = null
   }
+}
+
+// ─── GET /jobs/:id ───────────────────────────────────────────────────────────
+router.get('/jobs/:id', (req, res) => {
+  const job = getJob(req.params.id)
+  if (!job) return res.status(404).json({ error: 'job not found or expired' })
+
+  if (job.status === 'processing') {
+    return res.json({ job_id: req.params.id, type: 'processing' })
+  }
+
+  if (job.status === 'error') {
+    return res.json({ job_id: req.params.id, type: 'error', error: job.error })
+  }
+
+  // done — spread result and inject job_id
+  return res.json({ ...job.result, job_id: req.params.id })
 })
 
 // ─── DELETE /session/:id ─────────────────────────────────────────────────────

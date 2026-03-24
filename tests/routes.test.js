@@ -2,11 +2,13 @@ jest.mock('../src/sessions')
 jest.mock('../src/scanner')
 jest.mock('../src/filler')
 jest.mock('../src/screenshotter')
+jest.mock('../src/jobs')
 
 const sessions = require('../src/sessions')
 const { scanPage } = require('../src/scanner')
 const { fillForm } = require('../src/filler')
 const { takeScreenshot } = require('../src/screenshotter')
+const jobs = require('../src/jobs')
 
 // Import after mocks
 const express = require('express')
@@ -67,10 +69,21 @@ describe('POST /start', () => {
   })
 })
 
-describe('POST /respond', () => {
-  beforeEach(() => jest.clearAllMocks())
+describe('POST /respond — async', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    jobs.createJob.mockReturnValue('job-uuid-1')
+    jobs.getJob.mockReturnValue({ status: 'processing', result: null, error: null })
+    jobs.resolveJob.mockImplementation(() => {})
+    jobs.failJob.mockImplementation(() => {})
+  })
 
-  test('returns 400 when session_id or values missing', async () => {
+  test('returns 400 when session_id is missing', async () => {
+    const res = await request(app).post('/respond').send({ values: [] })
+    expect(res.status).toBe(400)
+  })
+
+  test('returns 400 when values is missing', async () => {
     const res = await request(app).post('/respond').send({ session_id: 'abc' })
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/values/)
@@ -82,37 +95,142 @@ describe('POST /respond', () => {
     expect(res.status).toBe(404)
   })
 
-  test('returns result on success page after fill', async () => {
+  test('returns 500 when session has crashed', async () => {
+    sessions.getSession.mockReturnValue({ crashed: true })
+    const res = await request(app).post('/respond').send({ session_id: 'abc', values: [] })
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/crashed/)
+  })
+
+  test('returns 409 when session already has an active job', async () => {
+    sessions.getSession.mockReturnValue({
+      crashed: false,
+      activeJobId: 'existing-job-id',
+      lastAnalysis: null
+    })
+    const res = await request(app).post('/respond').send({ session_id: 'abc', values: [] })
+    expect(res.status).toBe(409)
+    expect(res.body.error).toMatch(/job already in progress/)
+  })
+
+  test('returns HTTP 202 with job_id immediately for valid request', async () => {
     const mockSession = {
-      page: { waitForLoadState: jest.fn().mockResolvedValue(undefined) },
+      crashed: false,
+      activeJobId: null,
       lastAnalysis: { context: 'form', fields: [], submit_selector: 'button' },
       scanCount: 0,
-      crashed: false
+      consecutiveUnknownCount: 0,
+      page: { waitForLoadState: jest.fn().mockResolvedValue(undefined) }
     }
     sessions.getSession.mockReturnValue(mockSession)
     sessions.touchSession.mockImplementation(() => {})
-    sessions.deleteSession.mockResolvedValue(true)
-    fillForm.mockResolvedValue({ filled: [{ field: 'Email', value: 'test@x.com' }], skipped: [] })
-    takeScreenshot.mockResolvedValue('https://host/screenshots/abc_filled.png')
+    fillForm.mockResolvedValue({ filled: [], skipped: [] })
+    takeScreenshot.mockResolvedValue('https://host/s/abc.png')
     scanPage.mockResolvedValue({ context: 'success' })
+    sessions.deleteSession.mockResolvedValue(true)
 
     const res = await request(app).post('/respond').send({
       session_id: 'abc123',
       values: [{ id: 'email', value: 'test@x.com' }]
     })
 
-    expect(res.status).toBe(200)
-    expect(res.body.type).toBe('result')
-    expect(res.body.status).toBe('success')
-    expect(res.body.fields_filled).toHaveLength(1)
-    expect(sessions.deleteSession).toHaveBeenCalled()
+    expect(res.status).toBe(202)
+    expect(res.body.type).toBe('processing')
+    expect(res.body.job_id).toBe('job-uuid-1')
+    expect(res.body.session_id).toBe('abc123')
   })
 
-  test('returns 500 when session has crashed', async () => {
-    sessions.getSession.mockReturnValue({ crashed: true })
-    const res = await request(app).post('/respond').send({ session_id: 'abc', values: [] })
-    expect(res.status).toBe(500)
-    expect(res.body.error).toMatch(/crashed/)
+  test('fillForm rejection causes failJob to be called', async () => {
+    const mockSession = {
+      crashed: false,
+      activeJobId: null,
+      lastAnalysis: { context: 'form', fields: [], submit_selector: 'button' },
+      scanCount: 0,
+      consecutiveUnknownCount: 0,
+      page: { waitForLoadState: jest.fn().mockResolvedValue(undefined) }
+    }
+    sessions.getSession.mockReturnValue(mockSession)
+    sessions.touchSession.mockImplementation(() => {})
+    fillForm.mockRejectedValue(new Error('playwright crash'))
+    takeScreenshot.mockResolvedValue('https://host/s/abc.png')
+
+    await request(app).post('/respond').send({
+      session_id: 'abc123',
+      values: []
+    })
+
+    // The background promise rejects and the call-site .catch handles it.
+    // setTimeout(0) flushes the microtask queue; 50ms is a safe margin.
+    await new Promise(r => setTimeout(r, 50))
+    expect(jobs.failJob).toHaveBeenCalledWith('job-uuid-1', 'playwright crash')
+  })
+
+  test('activeJobId is cleared on session after job completes', async () => {
+    const mockSession = {
+      crashed: false,
+      activeJobId: null,
+      lastAnalysis: { context: 'form', fields: [], submit_selector: 'button' },
+      scanCount: 0,
+      consecutiveUnknownCount: 0,
+      page: { waitForLoadState: jest.fn().mockResolvedValue(undefined) }
+    }
+    sessions.getSession.mockReturnValue(mockSession)
+    sessions.touchSession.mockImplementation(() => {})
+    fillForm.mockResolvedValue({ filled: [], skipped: [] })
+    takeScreenshot.mockResolvedValue('https://host/s/abc.png')
+    scanPage.mockResolvedValue({ context: 'success' })
+    sessions.deleteSession.mockResolvedValue(true)
+
+    await request(app).post('/respond').send({ session_id: 'abc123', values: [] })
+    // The background promise rejects and the call-site .catch handles it.
+    // setTimeout(0) flushes the microtask queue; 50ms is a safe margin.
+    await new Promise(r => setTimeout(r, 50))
+
+    expect(mockSession.activeJobId).toBeNull()
+  })
+})
+
+describe('GET /jobs/:id', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  test('returns 404 for unknown job_id', async () => {
+    jobs.getJob.mockReturnValue(null)
+    const res = await request(app).get('/jobs/unknown-id')
+    expect(res.status).toBe(404)
+    expect(res.body.error).toMatch(/not found/)
+  })
+
+  test('returns processing state while job is running', async () => {
+    jobs.getJob.mockReturnValue({ status: 'processing', result: null, error: null })
+    const res = await request(app).get('/jobs/job-uuid-1')
+    expect(res.status).toBe(200)
+    expect(res.body.type).toBe('processing')
+    expect(res.body.job_id).toBe('job-uuid-1')
+  })
+
+  test('returns result payload when job is done', async () => {
+    const result = {
+      session_id: 'abc123',
+      type: 'result',
+      status: 'success',
+      fields_filled: [{ field: 'Email', value: 'test@x.com' }],
+      screenshots: ['https://host/s/abc.png']
+    }
+    jobs.getJob.mockReturnValue({ status: 'done', result, error: null })
+    const res = await request(app).get('/jobs/job-uuid-1')
+    expect(res.status).toBe(200)
+    expect(res.body.type).toBe('result')
+    expect(res.body.job_id).toBe('job-uuid-1')
+    expect(res.body.fields_filled).toHaveLength(1)
+  })
+
+  test('returns error payload (HTTP 200) when job failed', async () => {
+    jobs.getJob.mockReturnValue({ status: 'error', result: null, error: 'session expired during execution' })
+    const res = await request(app).get('/jobs/job-uuid-1')
+    expect(res.status).toBe(200)
+    expect(res.body.type).toBe('error')
+    expect(res.body.error).toBe('session expired during execution')
+    expect(res.body.job_id).toBe('job-uuid-1')
   })
 })
 
