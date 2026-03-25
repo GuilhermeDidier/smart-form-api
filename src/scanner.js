@@ -62,13 +62,27 @@ async function extractPageSnapshot(page, scanCount) {
     const emailMatches = bodyHtml.match(/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/g) || []
     const emailsOnPage = [...new Set(emailMatches)].slice(0, 10)
 
-    // Extract paragraphs/text nodes that contain an email address (provides apply context)
+    // Extract paragraphs/text nodes that contain an email address in visible text
     const emailRegex = /\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/
-    const emailContexts = Array.from(document.querySelectorAll('p, li, td, div'))
+    const textEmailContexts = Array.from(document.querySelectorAll('p, li, td, div'))
       .filter(el => !el.querySelector('p, li, td, div') && emailRegex.test(el.textContent))
       .map(el => el.textContent.trim().substring(0, 300))
       .filter(Boolean)
-      .slice(0, 5)
+
+    // Also extract context from mailto: links — email may be in href only, not visible text
+    const mailtoContexts = Array.from(document.querySelectorAll('a[href^="mailto:"]'))
+      .map(el => {
+        const emailMatch = el.href.match(/mailto:([^\?&\s]+)/)
+        if (!emailMatch) return null
+        const email = emailMatch[1]
+        const parent = el.closest('p, li, td, section, article') || el.parentElement
+        const text = parent ? parent.textContent.trim().substring(0, 280) : el.textContent.trim()
+        // Append email address if not already visible in text so the regex can find it
+        return text.includes(email) ? text : `${text} ${email}`.trim().substring(0, 300)
+      })
+      .filter(Boolean)
+
+    const emailContexts = [...new Set([...textEmailContexts, ...mailtoContexts])].slice(0, 5)
 
     return {
       url: window.location.href,
@@ -89,13 +103,10 @@ async function extractPageSnapshot(page, scanCount) {
 }
 
 // Keywords indicating "send email to apply" instructions
-const APPLY_EMAIL_KEYWORDS = /send|envo|candidature|apply|cv|résumé|resume|motivation|postuler|candidat/i
+const APPLY_EMAIL_KEYWORDS = /send|envo[iy]|candidature|apply|applying|cv|résumé|resume|motivation|postuler|candidat|submit|application|forward|attach/i
 
-// Pre-Claude detection: if the page has no form inputs but has an email address
-// in an "apply" context, classify directly as email_contact without Claude call.
-function detectEmailContactFromSnapshot(snapshot) {
-  if (snapshot.inputs.length > 0 || snapshot.forms) return null
-
+// Search emailContexts for an apply instruction containing an email address
+function _findEmailApplyContext(snapshot) {
   const applyContext = snapshot.emailContexts.find((ctx) => APPLY_EMAIL_KEYWORDS.test(ctx))
   if (!applyContext) return null
 
@@ -110,6 +121,58 @@ function detectEmailContactFromSnapshot(snapshot) {
       body: 'Please find my CV and cover letter attached as requested.'
     }
   }
+}
+
+// Fallback: search bodyText for an email address near apply keywords
+// Handles cases where emailContexts is empty (e.g. email only in mailto: href)
+function _findEmailApplyInBodyText(snapshot) {
+  if (!snapshot.bodyText || !snapshot.emailsOnPage.length) return null
+
+  for (const email of snapshot.emailsOnPage) {
+    const idx = snapshot.bodyText.indexOf(email)
+    if (idx === -1) continue
+    const nearby = snapshot.bodyText.substring(
+      Math.max(0, idx - 200),
+      Math.min(snapshot.bodyText.length, idx + 200)
+    )
+    if (APPLY_EMAIL_KEYWORDS.test(nearby)) {
+      return {
+        context: 'email_contact',
+        details: {
+          to: email,
+          subject: `Application - ${snapshot.title}`,
+          body: 'Please find my CV and cover letter attached as requested.'
+        }
+      }
+    }
+  }
+  return null
+}
+
+// Pre-Claude detection: classify as email_contact without a Claude API call when possible.
+function detectEmailContactFromSnapshot(snapshot) {
+  // Strict path: no form inputs at all
+  if (snapshot.inputs.length === 0 && !snapshot.forms) {
+    const result = _findEmailApplyContext(snapshot) || _findEmailApplyInBodyText(snapshot)
+    if (result) return result
+  }
+
+  // Relaxed path: page has only navigation/search inputs, not actual application fields.
+  // This handles job listing pages with a nav search bar but no application form.
+  if (snapshot.inputs.length > 0 && snapshot.inputs.length <= 3 && !snapshot.forms) {
+    const isAllNavigationInputs = snapshot.inputs.every(
+      (inp) =>
+        inp.type === 'search' ||
+        (inp.name || '').toLowerCase().includes('search') ||
+        (inp.ariaLabel || '').toLowerCase().includes('search')
+    )
+    if (isAllNavigationInputs) {
+      const result = _findEmailApplyContext(snapshot) || _findEmailApplyInBodyText(snapshot)
+      if (result) return result
+    }
+  }
+
+  return null
 }
 
 async function scanPage(page, scanCount = 0) {

@@ -115,4 +115,57 @@ describe('scanPage', () => {
     expect(result.context).toBe('unknown')
     expect(analyzePageWithClaude).toHaveBeenCalled()
   })
+
+  // RC-1: mailto: links put email in href only — emailContexts may be empty but bodyText has context
+  test('detects email_contact from bodyText when emailContexts is empty (mailto: link case)', async () => {
+    const snapshot = {
+      ...baseSnapshot,
+      inputs: [],
+      forms: null,
+      emailsOnPage: ['jobs@company.com'],
+      emailContexts: [],
+      bodyText: 'We are hiring! Please send your CV and application to jobs@company.com. We look forward to hearing from you.'
+    }
+    const mockPage = makeMockPage(snapshot)
+
+    const result = await scanPage(mockPage, 0)
+    expect(result.context).toBe('email_contact')
+    expect(result.details.to).toBe('jobs@company.com')
+    expect(analyzePageWithClaude).not.toHaveBeenCalled()
+  })
+
+  // RC-2: page has only a nav search bar — should not block email_contact detection
+  test('detects email_contact when only navigation search inputs are present', async () => {
+    const snapshot = {
+      ...baseSnapshot,
+      inputs: [{ tag: 'INPUT', type: 'search', name: 'q', id: 'search', placeholder: 'Search jobs', ariaLabel: null, required: false, className: '', options: null }],
+      forms: null,
+      emailsOnPage: ['jobs@company.com'],
+      emailContexts: ['Please send your CV to jobs@company.com to apply for this position']
+    }
+    const mockPage = makeMockPage(snapshot)
+
+    const result = await scanPage(mockPage, 0)
+    expect(result.context).toBe('email_contact')
+    expect(result.details.to).toBe('jobs@company.com')
+    expect(analyzePageWithClaude).not.toHaveBeenCalled()
+  })
+
+  // RC-3: missing keywords — "submit your application to"
+  test('detects email_contact with "submit application" keywords', async () => {
+    const snapshot = {
+      ...baseSnapshot,
+      inputs: [],
+      forms: null,
+      emailsOnPage: ['hr@company.com'],
+      emailContexts: ['Interested candidates should submit their application to hr@company.com'],
+      bodyText: ''
+    }
+    const mockPage = makeMockPage(snapshot)
+
+    const result = await scanPage(mockPage, 0)
+    expect(result.context).toBe('email_contact')
+    expect(result.details.to).toBe('hr@company.com')
+    expect(analyzePageWithClaude).not.toHaveBeenCalled()
+  })
 })
