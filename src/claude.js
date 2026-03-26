@@ -41,7 +41,12 @@ Shape 1 — interactive form (login, account creation, job application, etc.):
 Shape 2 — page requires sending an email to apply:
 {
   "context": "email_contact",
-  "details": { "to": "email@example.com", "subject": "text", "body": "text" }
+  "details": {
+    "to": "email@example.com",
+    "subject": "text",
+    "body": "text",
+    "attachments": ["resume.pdf", "cover_letter.pdf"]
+  }
 }
 
 Shape 3 — confirmation/success page (form already submitted):
@@ -58,7 +63,8 @@ Rules:
 - For React/custom dropdowns ([role="combobox"]), list all visible option texts in "options"
 - Only include fields that require user input (skip hidden, readonly)
 - submit_selector must target the primary action button (Submit, Apply, Next, Continue)
-- If the page's purpose is for the user to send an email with their CV/resume/application, classify as "email_contact" — even if the page has a few incidental inputs like a navigation search bar. Signs: emailContexts or bodyText contain phrases like "send your CV to", "submit your application to", "email your resume", "forward your cover letter"; emailsOnPage has an email address; and there is no actual multi-field application form. Extract the apply email as "to", infer a subject from the page title, and write a brief cover letter as "body"`
+- If the page's purpose is for the user to send an email with their CV/resume/application, classify as "email_contact" — even if the page has a few incidental inputs like a navigation search bar. Signs: emailContexts or bodyText contain phrases like "send your CV to", "submit your application to", "email your resume", "forward your cover letter"; emailsOnPage has an email address; and there is no actual multi-field application form. Extract the apply email as "to", infer a subject from the page title, and write a brief cover letter as "body"
+- For email_contact attachments: inspect bodyText and emailContexts for mentions of CV, resume, cover letter, portfolio, references. Use standard filenames: cv.pdf, resume.pdf, cover_letter.pdf, portfolio.pdf, references.pdf. Use an empty array [] if no attachments are mentioned.`
 }
 
 function stripFences(text) {

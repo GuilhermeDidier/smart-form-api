@@ -102,6 +102,18 @@ async function extractPageSnapshot(page, scanCount) {
   return snapshot
 }
 
+// Extract attachment hints from apply instructions.
+// CV takes precedence over resume (else-if) — both won't appear together.
+function _extractAttachments(text) {
+  const attachments = []
+  if (/\bcv\b|curriculum vitae/i.test(text)) attachments.push('cv.pdf')
+  else if (/resume|résumé/i.test(text)) attachments.push('resume.pdf')
+  if (/cover letter|lettre de motivation|lettre de pr[eé]sentation/i.test(text)) attachments.push('cover_letter.pdf')
+  if (/portfolio/i.test(text)) attachments.push('portfolio.pdf')
+  if (/references?|r[eé]f[eé]rences?/i.test(text)) attachments.push('references.pdf')
+  return attachments
+}
+
 // Keywords indicating "send email to apply" instructions
 const APPLY_EMAIL_KEYWORDS = /send|envo[iy]|candidature|apply|applying|cv|résumé|resume|motivation|postuler|candidat|submit|application|forward|attach/i
 
@@ -118,7 +130,8 @@ function _findEmailApplyContext(snapshot) {
     details: {
       to: emailMatch[0],
       subject: `Application - ${snapshot.title}`,
-      body: 'Please find my CV and cover letter attached as requested.'
+      body: 'Please find my CV and cover letter attached as requested.',
+      attachments: _extractAttachments(applyContext)
     }
   }
 }
@@ -141,7 +154,8 @@ function _findEmailApplyInBodyText(snapshot) {
         details: {
           to: email,
           subject: `Application - ${snapshot.title}`,
-          body: 'Please find my CV and cover letter attached as requested.'
+          body: 'Please find my CV and cover letter attached as requested.',
+          attachments: _extractAttachments(nearby)
         }
       }
     }

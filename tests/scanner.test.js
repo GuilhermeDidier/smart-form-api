@@ -97,6 +97,7 @@ describe('scanPage', () => {
     const result = await scanPage(mockPage, 0)
     expect(result.context).toBe('email_contact')
     expect(result.details.to).toBe('jobs@company.com')
+    expect(result.details.attachments).toEqual(['cv.pdf'])   // NEW assertion
     expect(analyzePageWithClaude).not.toHaveBeenCalled()
   })
 
@@ -131,6 +132,7 @@ describe('scanPage', () => {
     const result = await scanPage(mockPage, 0)
     expect(result.context).toBe('email_contact')
     expect(result.details.to).toBe('jobs@company.com')
+    expect(result.details.attachments).toEqual(['cv.pdf'])   // NEW assertion
     expect(analyzePageWithClaude).not.toHaveBeenCalled()
   })
 
@@ -167,5 +169,39 @@ describe('scanPage', () => {
     expect(result.context).toBe('email_contact')
     expect(result.details.to).toBe('hr@company.com')
     expect(analyzePageWithClaude).not.toHaveBeenCalled()
+  })
+
+  test('includes resume.pdf in attachments when page mentions resume', async () => {
+    const snapshot = {
+      ...baseSnapshot,
+      inputs: [],
+      forms: null,
+      emailsOnPage: ['hr@company.com'],
+      emailContexts: ['Please forward your resume and cover letter to hr@company.com'],
+      bodyText: ''
+    }
+    const mockPage = makeMockPage(snapshot)
+
+    const result = await scanPage(mockPage, 0)
+    expect(result.context).toBe('email_contact')
+    expect(result.details.attachments).toContain('resume.pdf')
+    expect(result.details.attachments).toContain('cover_letter.pdf')
+  })
+
+  test('includes cover_letter.pdf when page mentions lettre de motivation (French)', async () => {
+    const snapshot = {
+      ...baseSnapshot,
+      inputs: [],
+      forms: null,
+      emailsOnPage: ['rh@entreprise.ca'],
+      emailContexts: ['Envoyez votre CV et lettre de motivation à rh@entreprise.ca'],
+      bodyText: ''
+    }
+    const mockPage = makeMockPage(snapshot)
+
+    const result = await scanPage(mockPage, 0)
+    expect(result.context).toBe('email_contact')
+    expect(result.details.attachments).toContain('cv.pdf')
+    expect(result.details.attachments).toContain('cover_letter.pdf')
   })
 })

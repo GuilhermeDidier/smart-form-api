@@ -96,4 +96,23 @@ describe('analyzePageWithClaude', () => {
     expect(result.context).toBe('account_creation')
     expect(result.fields).toHaveLength(2)
   })
+
+  test('passes through attachments in email_contact details', async () => {
+    const validResponse = {
+      context: 'email_contact',
+      details: {
+        to: 'hr@company.com',
+        subject: 'Application',
+        body: 'Please find attached.',
+        attachments: ['cv.pdf', 'cover_letter.pdf']
+      }
+    }
+    mockCreate.mockResolvedValue({
+      content: [{ text: JSON.stringify(validResponse) }]
+    })
+
+    const result = await analyzePageWithClaude({ url: 'https://example.com', inputs: [] })
+    expect(result.context).toBe('email_contact')
+    expect(result.details.attachments).toEqual(['cv.pdf', 'cover_letter.pdf'])
+  })
 })
