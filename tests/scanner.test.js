@@ -204,4 +204,43 @@ describe('scanPage', () => {
     expect(result.details.attachments).toContain('cv.pdf')
     expect(result.details.attachments).toContain('cover_letter.pdf')
   })
+
+  // RC-4: cookie consent checkboxes on page should not block email_contact detection
+  test('detects email_contact when only cookie consent checkboxes are present', async () => {
+    const snapshot = {
+      ...baseSnapshot,
+      inputs: [
+        { tag: 'INPUT', type: 'checkbox', name: '', id: 'acceptAllCookiesX', placeholder: null, ariaLabel: null, required: false, className: '', options: null },
+        { tag: 'INPUT', type: 'checkbox', name: '', id: 'acceptGACookiesX', placeholder: null, ariaLabel: null, required: false, className: '', options: null }
+      ],
+      forms: null,
+      emailsOnPage: ['jobs@company.com'],
+      emailContexts: ['Please send your CV and application to jobs@company.com']
+    }
+    const mockPage = makeMockPage(snapshot)
+
+    const result = await scanPage(mockPage, 0)
+    expect(result.context).toBe('email_contact')
+    expect(result.details.to).toBe('jobs@company.com')
+    expect(analyzePageWithClaude).not.toHaveBeenCalled()
+  })
+
+  // RC-5: newsletter subscription input in footer should not block email_contact detection
+  test('detects email_contact when only newsletter subscription input is present', async () => {
+    const snapshot = {
+      ...baseSnapshot,
+      inputs: [
+        { tag: 'INPUT', type: 'text', name: 'newsletterEmail', id: '', placeholder: 'email@example.com', ariaLabel: null, required: false, className: '', options: null }
+      ],
+      forms: null,
+      emailsOnPage: ['cea.monteregie@upa.qc.ca'],
+      emailContexts: ["merci d'envoyer votre candidature par courriel à cea.monteregie@upa.qc.ca"]
+    }
+    const mockPage = makeMockPage(snapshot)
+
+    const result = await scanPage(mockPage, 0)
+    expect(result.context).toBe('email_contact')
+    expect(result.details.to).toBe('cea.monteregie@upa.qc.ca')
+    expect(analyzePageWithClaude).not.toHaveBeenCalled()
+  })
 })

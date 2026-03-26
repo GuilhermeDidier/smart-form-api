@@ -165,22 +165,33 @@ function _findEmailApplyInBodyText(snapshot) {
 
 // Pre-Claude detection: classify as email_contact without a Claude API call when possible.
 function detectEmailContactFromSnapshot(snapshot) {
-  // Strict path: no form inputs at all
-  if (snapshot.inputs.length === 0 && !snapshot.forms) {
+  // Strip cookie consent banner inputs — they appear on many sites and are not application fields.
+  const appInputs = snapshot.inputs.filter((inp) => {
+    const id = (inp.id || '').toLowerCase()
+    const name = (inp.name || '').toLowerCase()
+    return !id.includes('cookie') && !name.includes('cookie')
+  })
+
+  // Strict path: no application form inputs at all
+  if (appInputs.length === 0 && !snapshot.forms) {
     const result = _findEmailApplyContext(snapshot) || _findEmailApplyInBodyText(snapshot)
     if (result) return result
   }
 
-  // Relaxed path: page has only navigation/search inputs, not actual application fields.
-  // This handles job listing pages with a nav search bar but no application form.
-  if (snapshot.inputs.length > 0 && snapshot.inputs.length <= 3 && !snapshot.forms) {
-    const isAllNavigationInputs = snapshot.inputs.every(
-      (inp) =>
+  // Relaxed path: page has only non-application inputs (search bar, newsletter subscription, etc.),
+  // not actual application form fields.
+  if (appInputs.length > 0 && appInputs.length <= 3 && !snapshot.forms) {
+    const isAllNonApplicationInputs = appInputs.every((inp) => {
+      const id = (inp.id || '').toLowerCase()
+      const name = (inp.name || '').toLowerCase()
+      const ariaLabel = (inp.ariaLabel || '').toLowerCase()
+      return (
         inp.type === 'search' ||
-        (inp.name || '').toLowerCase().includes('search') ||
-        (inp.ariaLabel || '').toLowerCase().includes('search')
-    )
-    if (isAllNavigationInputs) {
+        id.includes('search') || name.includes('search') || ariaLabel.includes('search') ||
+        name.includes('newsletter') || id.includes('newsletter')
+      )
+    })
+    if (isAllNonApplicationInputs) {
       const result = _findEmailApplyContext(snapshot) || _findEmailApplyInBodyText(snapshot)
       if (result) return result
     }
