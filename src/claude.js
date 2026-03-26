@@ -22,15 +22,15 @@ ${JSON.stringify(pageInfo, null, 2)}
 
 Return ONLY raw JSON — no markdown fences, no explanation. Use exactly one of these shapes:
 
-Shape 1 — interactive form (login, signup, job application, etc.):
+Shape 1 — interactive form (login, account creation, job application, etc.):
 {
-  "context": "login" | "signup" | "form" | "additional_form",
+  "context": "login" | "account_creation" | "form" | "additional_form",
   "fields": [
     {
       "id": "unique_id (name attr, id attr, or aria-label — no spaces)",
       "label": "visible label text",
       "selector": "CSS selector (prefer [name='x'] or [id='x'])",
-      "type": "text|password|email|textarea|select|radio|checkbox|file",
+      "type": "text|password|email|tel|textarea|select|radio|checkbox|file",
       "required": true,
       "options": ["Canada", "USA"]
     }
@@ -51,7 +51,9 @@ Shape 4 — cannot classify with confidence:
 { "context": "unknown" }
 
 Rules:
+- Use "account_creation" when the page requires creating a new account (email, password, name fields typical)
 - Use "additional_form" if this is a multi-step flow and a previous step was already completed
+- Use "tel" for phone number inputs; for phone fields with a separate dial code dropdown, detect each as a separate field: one "select" for the dial code (label: "Dial Code", options: ["+1", "+33", ...]) and one "tel" for the number (label: "Phone Number")
 - For native <select>, list all <option> texts in "options"
 - For React/custom dropdowns ([role="combobox"]), list all visible option texts in "options"
 - Only include fields that require user input (skip hidden, readonly)
