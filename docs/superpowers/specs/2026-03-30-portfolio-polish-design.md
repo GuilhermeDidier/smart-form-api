@@ -9,9 +9,9 @@
 
 Two artifacts need work: the **demo page** (`public/demo.html`) and the **README.md** (to be created). No backend code changes. No new features. Scope is presentation only.
 
-After these changes the full recrutador journey is:
+After these changes the full recruiter journey is:
 1. Upwork profile → clicks project link
-2. GitHub repo → reads README, sees badges + GIF + architecture
+2. GitHub repo (`https://github.com/GuilhermeDidier/smart-form-api`) → reads README, sees badges + GIF + architecture
 3. Clicks live app link → lands on polished demo page → tests it
 
 ---
@@ -27,69 +27,158 @@ The current "Full Application Form" preset points to `boards.greenhouse.io/embed
 
 Replace with `https://demoqa.com/automation-practice-form` — a permanent practice form with 15+ fields (text, email, phone, date, gender radio, hobbies checkboxes, state dropdown, file upload). More impressive for automation-focused clients.
 
-Update the preset button label to reflect the new URL (e.g., "Practice Form (15 fields)").
+Exact changes:
+- In `PRESET_URLS`, change `form` value to `'https://demoqa.com/automation-practice-form'`. Keep the key as `form` — do not rename it, as it is referenced by the `setPreset('form', this)` call and `id="presetForm"`.
+- Change the button label text from `"Full Application Form"` to `"Practice Form (15+ fields)"`.
 
 ### 2.3 "How it works" section
-Add a 3-step horizontal strip between the header and Step 1 card. Each step is a small card:
+Add a new `<div class="how-it-works">` block immediately after the `<header>` element and before the first `.card` (Step 1). It contains three `.hiw-step` cards in a horizontal flexbox row.
 
-| Step | Label | Description |
-|------|-------|-------------|
+Content of the three steps:
+
+| Step | Endpoint label | Description |
+|------|---------------|-------------|
 | 1 | POST /start | AI opens a browser, navigates to the URL, and returns every detected field |
 | 2 | POST /respond | You send the values — the browser fills and submits the form autonomously |
-| 3 | GET /jobs/:id | Poll for the async result, filled fields list, and timestamped screenshots |
+| 3 | GET /jobs/:id | Poll for the async result, filled-fields list, and timestamped screenshots |
 
-Style: same dark palette, thin border, small monospace labels. No icons — text only, clean.
+CSS for the new elements (add to the `<style>` block):
+```css
+.how-it-works {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+@media (max-width: 600px) { .how-it-works { flex-direction: column; } }
+
+.hiw-step {
+  flex: 1;
+  background: #161b27;
+  border: 1px solid #21262d;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.hiw-endpoint {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: #58a6ff;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+
+.hiw-desc {
+  font-size: 12px;
+  color: #8b949e;
+  line-height: 1.5;
+}
+```
 
 ### 2.4 GitHub link in header
-Add a small button top-right of the header, opening the public repo in a new tab. Style: `btn-ghost` variant, GitHub SVG icon (inline, 16px), text "View on GitHub".
+Add a `<div class="header-actions">` wrapper inside `<header>`, positioned top-right using `position: absolute` on the header (add `position: relative` to the existing `header` selector).
+
+Button: `btn-ghost` class, links to `https://github.com/GuilhermeDidier/smart-form-api`, `target="_blank" rel="noopener"`.
+
+Inline GitHub SVG icon (16×16, `currentColor` fill), followed by text `"View on GitHub"`.
+
+CSS addition:
+```css
+header { position: relative; }
+.header-actions { position: absolute; top: 0; right: 0; }
+```
 
 ### 2.5 Stack badges in footer
-Add a footer below the last card with a single row of chips:
+Add a `<footer>` element after the closing `</div>` of `.container`, with a row of five `.stack-chip` spans:
 `Node.js` · `Express` · `Playwright` · `Claude AI` · `Railway`
 
-Same chip style as the existing `.badge` class, but smaller and gray (not blue).
+CSS:
+```css
+footer {
+  text-align: center;
+  margin-top: 40px;
+  padding-bottom: 40px;
+}
+
+.stack-chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: #161b27;
+  color: #8b949e;
+  border: 1px solid #21262d;
+  margin: 0 4px;
+}
+```
 
 ---
 
-## 3. README.md (new file)
+## 3. README.md (new file, project root)
 
 ### 3.1 Header
-```
+```markdown
 # smart-form-api
+
 Autonomous form-filling REST API powered by AI and a headless browser.
 ```
-Badges row: Node.js 20 · Express · Playwright · Claude AI · Jest 68 tests · Railway · MIT
 
-Live app link: `[Try the live app →](https://energetic-enthusiasm-production-bbde.up.railway.app/demo)`
+Shields.io badges (static, no external API calls needed):
+- `Node.js 20` (green)
+- `Express 4` (gray)
+- `Playwright` (green)
+- `Claude AI` (orange)
+- `68 tests passing` (brightgreen)
+- `Railway` (purple)
+- `MIT License` (blue)
+
+Live app link line: `**[Try the live app →](https://energetic-enthusiasm-production-bbde.up.railway.app/demo)**`
 
 ### 3.2 What it does
-Three-bullet explanation:
+Short paragraph + three bullet points:
 - `POST /start` — sends a URL, gets back a structured list of every form field the AI detected
 - `POST /respond` — sends field values, the headless browser fills and submits the form
 - `GET /jobs/:id` — polls for the async result with filled fields and before/after screenshots
 
 ### 3.3 Architecture
-Mermaid diagram showing the module flow:
+Use a plain fenced code block (not Mermaid — GitHub renders Mermaid inconsistently with some themes):
 
 ```
-Client → POST /start → sessions.js → scanner.js (Claude Haiku)
-       → POST /respond → filler.js (Playwright) → screenshotter.js
-       → GET /jobs/:id → jobs.js
+┌─────────┐   POST /start    ┌──────────────┐   analyzeDOM   ┌───────────────┐
+│  Client │ ───────────────► │  sessions.js │ ─────────────► │  scanner.js   │
+│         │   POST /respond  │  (stateful)  │                │  (Claude AI)  │
+│         │ ───────────────► │              │ ─────────────► │  filler.js    │
+│         │   GET /jobs/:id  │              │                │  (Playwright) │
+│         │ ───────────────► │   jobs.js    │ ─────────────► │  screenshotter│
+└─────────┘                  └──────────────┘                └───────────────┘
 ```
 
 ### 3.4 API Reference
-Compact table for each endpoint: method, path, key request fields, key response fields, notes.
+Table with columns: Method | Path | Description | Key fields
 
-Endpoints: `POST /start`, `POST /respond`, `GET /jobs/:id`, `GET /demo`, `GET /screenshots/:filename`.
+Rows:
+| Method | Path | Description | Key fields |
+|--------|------|-------------|------------|
+| POST | `/start` | Open browser, navigate, detect fields | `url` → `session_id`, `type`, `fields[]` |
+| POST | `/respond` | Fill & submit form with provided values | `session_id`, `values[]` → `job_id` |
+| GET | `/jobs/:id` | Poll async result | → `type`, `status`, `fields_filled[]`, `screenshots[]` |
+| GET | `/demo` | Interactive demo UI | — |
+| GET | `/screenshots/:filename` | Serve captured screenshots | — |
+
+Response types: `data_request` (more fields needed), `action_required` (email-only page), `result` (done).
 
 ### 3.5 Quick Start
+`.env.example` already exists in the repo. Quick Start:
+
 ```bash
 git clone https://github.com/GuilhermeDidier/smart-form-api
 cd smart-form-api
 npm install
 npx playwright install chromium
 cp .env.example .env
-# Fill in ANTHROPIC_API_KEY and BASE_URL=http://localhost:3000
+# Edit .env: add your ANTHROPIC_API_KEY and set BASE_URL=http://localhost:3000
 npm start
 # Open http://localhost:3000/demo
 ```
@@ -97,32 +186,48 @@ npm start
 ### 3.6 Tech Stack table
 | Technology | Role |
 |------------|------|
-| Node.js 20 + Express | HTTP server and routing |
-| Playwright | Headless browser — handles SPAs, React dropdowns, and dynamic content |
+| Node.js 20 + Express 4 | HTTP server and routing |
+| Playwright 1.50 | Headless browser — handles SPAs, React dropdowns, and dynamic content |
 | Claude Haiku (Anthropic) | DOM analysis and field classification |
-| Jest + Supertest | 68 unit + integration tests |
-| Railway + Docker | Container deployment |
+| Jest 29 + Supertest | 68 unit + integration tests |
+| Railway + Docker | Container deployment with auto-scaling |
 
-### 3.7 Screenshots / GIF placeholder
-Section header `## Demo` with a note: *(GIF and screenshots go here after capture)*.
+### 3.7 Demo section
+```markdown
+## Demo
+```
+Placeholder comment: `<!-- Insert GIF here after capture -->` and `<!-- Insert screenshot here after capture -->`.
 
-Capture flow for GIF: empty state → select "Practice Form" preset → click "Scan Page" → fields appear → click "Fill & Submit" → result card with screenshots.
+After media is captured, embed GIF as `![demo](docs/demo.gif)` and screenshot as `![screenshot](docs/screenshot-result.png)`.
 
 ### 3.8 License
-MIT.
+```markdown
+## License
+MIT
+```
 
 ---
 
 ## 4. Media Capture Plan
 
-After demo page is deployed, capture in this order:
+After the demo page changes are deployed to Railway, capture in this order:
 
-1. **Screenshot 1** — page loaded, no action (shows "How it works" + Step 1)
-2. **Screenshot 2** — after scan of demoqa practice form (fields grid visible)
-3. **Screenshot 3** — result card after fill & submit (fields filled list + screenshots row)
-4. **GIF** — full flow using ScreenToGif: empty → preset click → scan → fields → fill → result (~15s, 800px wide)
+1. **Screenshot 1** — page loaded, no action (shows "How it works" strip + Step 1 card)
+2. **Screenshot 2** — after scanning demoqa practice form (fields grid visible, 15+ fields)
+3. **Screenshot 3** — result card after fill & submit (fields filled list + inline screenshots)
+4. **GIF** — full flow: empty state → click "Practice Form" preset → click "Scan Page" (wait for fields) → click "Fill & Submit" → result card appears
 
-Insert Screenshot 1 and GIF into README under `## Demo`.
+GIF capture settings (ScreenToGif, Windows):
+- Capture window: 800px wide, crop to content height
+- Frame rate: 10 fps
+- Duration: aim for ~15–20s; trim dead wait time in the editor
+- Export: GIF with 256 colors, optimize frames; target < 5 MB
+- Save as: `docs/demo.gif`
+
+Screenshot format: PNG, 1280px wide browser window.
+Save as: `docs/screenshot-1-home.png`, `docs/screenshot-2-fields.png`, `docs/screenshot-3-result.png`.
+
+After capture, update README section 3.7 with real image embeds.
 
 ---
 
@@ -130,5 +235,6 @@ Insert Screenshot 1 and GIF into README under `## Demo`.
 
 - No backend code changes
 - No new API endpoints
-- No changes to `docs/` internal planning files (repo is going public but `docs/` is internal context — acceptable to leave)
 - No changes to tests
+- `docs/superpowers/` internal planning files: leave as-is (no sensitive data; acceptable for a public repo)
+- `.env.example` already exists — no changes needed
