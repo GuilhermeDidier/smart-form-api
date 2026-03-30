@@ -17,6 +17,16 @@ app.get('/demo', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/demo.html'))
 })
 
+// Serve test form (used as a reliable preset for demos)
+app.get('/testform', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/testform.html'))
+})
+
+// Handle test form submission — render success page
+app.post('/testform/submit', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/testform-success.html'))
+})
+
 // Serve screenshots via explicit route (avoids Railway nginx interception of static files)
 app.get('/screenshots/:filename', (req, res) => {
   const { filename } = req.params
