@@ -24,13 +24,15 @@ Send a URL — the AI scans the page, detects every form field, and fills the fo
 
 ---
 
-## Demo
-
-![demo](docs/demo2.gif)
+## Screenshots
 
 ![home](docs/screenshot-home.png)
 
+*When a page has no online form, the API detects the recruiter's email and returns the full application instructions — to, subject, body, and required attachments.*
+
 ![email contact](docs/screenshot-email.png)
+
+![demo](docs/demo2.gif)
 
 ---
 
