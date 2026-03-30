@@ -198,7 +198,7 @@ npm start
 ```
 Placeholder comment: `<!-- Insert GIF here after capture -->` and `<!-- Insert screenshot here after capture -->`.
 
-After media is captured, embed GIF as `![demo](docs/demo.gif)` and screenshot as `![screenshot](docs/screenshot-result.png)`.
+After media is captured, embed GIF as `![demo](docs/demo.gif)` and screenshot as `![screenshot](docs/screenshot-3-result.png)`.
 
 ### 3.8 License
 ```markdown
