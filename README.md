@@ -26,8 +26,11 @@ Send a URL — the AI scans the page, detects every form field, and fills the fo
 
 ## Demo
 
-<!-- Insert GIF here after capture -->
-<!-- Insert screenshot here after capture -->
+![demo](docs/demo2.gif)
+
+![home](docs/screenshot-home.png)
+
+![email contact](docs/screenshot-email.png)
 
 ---
 

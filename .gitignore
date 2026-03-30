@@ -3,5 +3,7 @@ node_modules/
 screenshots/*
 !screenshots/.gitkeep
 *.png
+!docs/*.png
+!docs/*.gif
 dist/
 .DS_Store
