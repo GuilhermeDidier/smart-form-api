@@ -327,6 +327,35 @@
     .email-key { color: #8b949e; min-width: 64px; flex-shrink: 0; font-size: 12px; padding-top: 1px; }
     .email-val { color: #c9d1d9; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.5; }
 
+    .how-it-works {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 600px) { .how-it-works { flex-direction: column; } }
+
+    .hiw-step {
+      flex: 1;
+      background: #161b27;
+      border: 1px solid #21262d;
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .hiw-endpoint {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      color: #58a6ff;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    .hiw-desc {
+      font-size: 12px;
+      color: #8b949e;
+      line-height: 1.5;
+    }
+
     .hidden { display: none !important; }
 
     .divider {
@@ -352,6 +381,22 @@
     <h1>Smart Form Filling API</h1>
     <p class="subtitle">Paste any job application URL — the AI scans the page, detects every field,<br>fills the form autonomously, and submits it.</p>
   </header>
+
+  <!-- How it works -->
+  <div class="how-it-works">
+    <div class="hiw-step">
+      <div class="hiw-endpoint">POST /start</div>
+      <div class="hiw-desc">AI opens a browser, navigates to the URL, and returns every detected field</div>
+    </div>
+    <div class="hiw-step">
+      <div class="hiw-endpoint">POST /respond</div>
+      <div class="hiw-desc">You send the values — the browser fills and submits the form autonomously</div>
+    </div>
+    <div class="hiw-step">
+      <div class="hiw-endpoint">GET /jobs/:id</div>
+      <div class="hiw-desc">Poll for the async result, filled-fields list, and timestamped screenshots</div>
+    </div>
+  </div>
 
   <!-- Step 1 -->
   <div class="card">
